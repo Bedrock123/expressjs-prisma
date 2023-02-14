@@ -19,7 +19,7 @@ app.get("/", async (req, res) => {
   if (!population4GeoRaster) {
     console.log("first Load");
     population4GeoRaster = await geoblaze.parse(
-      `https://map-gules.vercel.app/maps/pop3.tif`
+      `https://map-gules.vercel.app/maps/pop4.tif`
     );
   } else {
     console.log("Population GeoRaster is already loaded");
