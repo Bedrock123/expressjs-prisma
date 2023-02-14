@@ -113,9 +113,7 @@ app.post("/", async (req, res) => {
 
     const endReadTime = performance.now();
 
-    console.log(
-      `Call to doSomething took ${endReadTime - startReadTime} milliseconds`
-    );
+    console.log(`Read File Time: ${endReadTime - startReadTime} milliseconds`);
 
     res.status(200).json({
       population: (parseInt(populationResult) * _resultDampening)
