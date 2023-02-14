@@ -152,7 +152,7 @@ app.listen(Number(port), "0.0.0.0", async () => {
   );
   console.log("Loaded Pop 2 Map");
 
-  pop1MapGeoRaster = await geoblaze.load(
+  pop1MapGeoRaster = await geoblaze.parse(
     `https://map-gules.vercel.app/maps/pop1.tif`
   );
   console.log("Loaded Pop 1 Map");
