@@ -151,7 +151,7 @@ app.post("/pop", async (req, res) => {
       populationMapType = "pop2";
       popGeoRaster = pop2MapGeoRaster;
     }
-    if (_blastAreaKm > 30000) {
+    if (_blastAreaKm > 100000) {
       populationMapType = "pop1";
       popGeoRaster = pop1MapGeoRaster;
     }
