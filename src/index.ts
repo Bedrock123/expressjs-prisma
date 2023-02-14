@@ -100,9 +100,7 @@ app.post("/", async (req, res) => {
   }
   const endPrepTime = performance.now();
 
-  console.log(
-    `Call to doSomething took ${endPrepTime - startPrepTime} milliseconds`
-  );
+  console.log(`Call to sdf took ${endPrepTime - startPrepTime} milliseconds`);
   try {
     // Calculate the population
     const startReadTime = performance.now();
