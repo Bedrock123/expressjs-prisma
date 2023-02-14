@@ -61,16 +61,16 @@ app.delete("/todos/:id", async (req, res) => {
 app.get("/", async (req, res) => {
   res.send(
     `
-  <h1>Todo REST API</h1>
+  <h1>Todo REsdfST API</h1>
   <h2>Available Routes</h2>
   <pre>
     GET, POST /todos
     GET, PUT, DELETE /todos/:id
   </pre>
-  `.trim(),
+  `.trim()
   );
 });
 
 app.listen(Number(port), "0.0.0.0", () => {
-    console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`Example app listening at http://localhost:${port}`);
 });
