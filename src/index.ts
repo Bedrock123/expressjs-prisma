@@ -130,37 +130,39 @@ app.post("/pop", async (req, res) => {
     _blastAreas.push(_blastGeoJson);
   }
 
-  // @ts-ignore
-  let _largestBlastAreaKm = area(_blastAreas[_blastAreas.length - 1]) / 1000000;
-
-  // Determine the map type to use
-  let populationMapType = "pop4";
-  let popGeoRaster = pop4MapGeoRaster;
-  if (_largestBlastAreaKm > 1500) {
-    populationMapType = "pop3";
-    popGeoRaster = pop3MapGeoRaster;
-  }
-  if (_largestBlastAreaKm > 15000) {
-    populationMapType = "pop2";
-    popGeoRaster = pop2MapGeoRaster;
-  }
-  if (_largestBlastAreaKm > 30000) {
-    populationMapType = "pop1";
-    popGeoRaster = pop1MapGeoRaster;
-  }
-
   // Loop through the blast areas and calculate the population
   let _populationResults: any = [];
 
   try {
     for (let i = 0; i < _blastAreas.length; i++) {
       const _blastArea: any = _blastAreas[i];
+
+      // @ts-ignore
+      let _blastAreaKm = area(_blastArea) / 1000000;
+
+      // Determine the map type to use
+      let populationMapType = "pop4";
+      let popGeoRaster = pop4MapGeoRaster;
+      if (_blastAreaKm > 1500) {
+        populationMapType = "pop3";
+        popGeoRaster = pop3MapGeoRaster;
+      }
+      if (_blastAreaKm > 15000) {
+        populationMapType = "pop2";
+        popGeoRaster = pop2MapGeoRaster;
+      }
+      if (_blastAreaKm > 30000) {
+        populationMapType = "pop1";
+        popGeoRaster = pop1MapGeoRaster;
+      }
+
       const populationResult = await geoblaze.sum(popGeoRaster, _blastArea);
 
       _populationResults.push({
         population: parseInt(populationResult),
         radiusKm: radii[i],
-        areaKm: Math.round(area(_blastArea) / 1000000),
+        areaKm: Math.round(_blastAreaKm),
+        mapType: populationMapType,
       });
     }
 
@@ -182,9 +184,6 @@ app.post("/pop", async (req, res) => {
   }
 
   res.status(200).json({
-    meta: {
-      mapType: populationMapType,
-    },
     population: _populationResults,
   });
 });
