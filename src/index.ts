@@ -1,7 +1,6 @@
 import express from "express";
 // @ts-ignore
 import geoblaze from "geoblaze";
-
 import area from "@turf/area";
 import centroid from "@turf/centroid";
 
@@ -12,105 +11,140 @@ app.use(express.json());
 app.use(express.raw({ type: "application/vnd.custom-type" }));
 app.use(express.text({ type: "text/html" }));
 
-let population4GeoRaster: any;
+let pop4MapGeoRaster: any;
+let pop3MapGeoRaster: any;
+let pop2MapGeoRaster: any;
+let pop1MapGeoRaster: any;
 
-app.get("/", async (req, res) => {
-  const start = Date.now();
-  if (!population4GeoRaster) {
-    console.log("first Load");
-    population4GeoRaster = await geoblaze.parse(
-      `https://map-gules.vercel.app/maps/pop4.tif`
-    );
-  } else {
-    console.log("Population GeoRaster is already loaded");
+// @ts-ignore
+var createGeoJSONCircle = function (center, outerRadiusInKm, points) {
+  if (!points) points = 64;
+
+  var coords = {
+    latitude: center[1],
+    longitude: center[0],
+  };
+
+  var km = outerRadiusInKm;
+
+  var ret = [];
+  var distanceX = km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180));
+  var distanceY = km / 110.574;
+
+  var theta, x, y;
+  for (var i = 0; i < points; i++) {
+    theta = (i / points) * (2 * Math.PI);
+    x = distanceX * Math.cos(theta);
+    y = distanceY * Math.sin(theta);
+
+    ret.push([coords.longitude + x, coords.latitude + y]);
   }
+  ret.push(ret[0]);
 
-  const populationResult = await geoblaze.sum(population4GeoRaster, {
+  return {
     type: "FeatureCollection",
     features: [
       {
         type: "Feature",
-        properties: {},
         geometry: {
           type: "Polygon",
-          coordinates: [
-            [
-              [-78.95412622012684, 47.68552444525974],
-              [-80.43175325974222, 47.62788766142734],
-              [-81.88647285090788, 47.455910119238744],
-              [-83.29622292935497, 47.17235127782679],
-              [-84.64055332560405, 46.78168451232245],
-              [-85.9012481622222, 46.28992232564439],
-              [-87.06276250005133, 45.70439657200339],
-              [-88.1124592287842, 45.033513172168846],
-              [-89.04065773759108, 44.286500267465165],
-              [-89.84052485897797, 43.473165902089335],
-              [-90.50784898511495, 42.60367710142716],
-              [-91.04074051854238, 41.68836760833901],
-              [-91.43929790345463, 40.737577322116266],
-              [-91.70527092267386, 39.76152312012721],
-              [-91.84174406196682, 38.77019839885336],
-              [-91.85285423445846, 37.773297299782634],
-              [-91.74355000440853, 36.78015901352105],
-              [-91.5193940299631, 35.799727566163526],
-              [-91.18640672763664, 34.840522879212436],
-              [-90.75094689414667, 33.91061948940735],
-              [-90.21962387044252, 33.017629994367354],
-              [-89.5992354730258, 32.16869097236572],
-              [-88.8967260756441, 31.370449761310052],
-              [-88.1191596925515, 30.629051047859793],
-              [-87.27370354727097, 29.950122702159415],
-              [-86.3676183132608, 29.338760694824572],
-              [-85.40825192723993, 28.79951325252157],
-              [-84.40303456893747, 28.336364650120572],
-              [-83.35947305405917, 27.952719204678413],
-              [-82.2851434889798, 27.651386133206],
-              [-81.18768157736564, 27.434565966531054],
-              [-80.07477044199345, 27.303839180852012],
-              [-78.95412622012684, 27.260157623694703],
-              [-77.83348199826024, 27.303839180852012],
-              [-76.72057086288805, 27.434565966531054],
-              [-75.62310895127389, 27.651386133206],
-              [-74.54877938619452, 27.952719204678413],
-              [-73.50521787131622, 28.336364650120572],
-              [-72.50000051301376, 28.79951325252157],
-              [-71.54063412699287, 29.338760694824572],
-              [-70.6345488929827, 29.95012270215941],
-              [-69.78909274770218, 30.629051047859793],
-              [-69.01152636460961, 31.370449761310038],
-              [-68.3090169672279, 32.16869097236571],
-              [-67.68862856981117, 33.017629994367354],
-              [-67.15730554610703, 33.91061948940735],
-              [-66.72184571261705, 34.84052287921243],
-              [-66.3888584102906, 35.799727566163526],
-              [-66.16470243584516, 36.78015901352105],
-              [-66.05539820579521, 37.77329729978262],
-              [-66.06650837828687, 38.77019839885336],
-              [-66.20298151757983, 39.76152312012721],
-              [-66.46895453679905, 40.737577322116266],
-              [-66.8675119217113, 41.68836760833901],
-              [-67.40040345513874, 42.60367710142716],
-              [-68.0677275812757, 43.473165902089335],
-              [-68.86759470266261, 44.286500267465165],
-              [-69.79579321146947, 45.033513172168846],
-              [-70.84548994020236, 45.70439657200339],
-              [-72.00700427803147, 46.28992232564439],
-              [-73.26769911464964, 46.78168451232245],
-              [-74.61202951089871, 47.172351277826785],
-              [-76.02177958934578, 47.455910119238744],
-              [-77.47649918051145, 47.62788766142734],
-              [-78.95412622012684, 47.68552444525974],
-            ],
-          ],
+          coordinates: [ret],
         },
       },
     ],
-  });
-  const end = Date.now();
-  console.log(`Execution time: ${end - start} ms`);
-  res.send(populationResult);
+  };
+};
+
+app.post("/", async (req, res) => {
+  const body = req.body;
+
+  let blastGeoJson = body.data;
+  const blastAreaM = area(blastGeoJson);
+  const blastAreaKm = blastAreaM / 1000000;
+
+  let _resultDampening = 1;
+  let _expandedBlastGeoJson;
+
+  // If the blast area is too small, expand it and then dampen the result
+  if (blastAreaKm <= 0.5) {
+    const blastCenterGeoJson = centroid(blastGeoJson);
+    const blastCenterCoordinates = blastCenterGeoJson.geometry.coordinates;
+
+    _expandedBlastGeoJson = createGeoJSONCircle(
+      blastCenterCoordinates,
+      4.9,
+      64 * 4
+    );
+    // @ts-ignore
+    const _expandedBlastGeoJsonAreaM = area(_expandedBlastGeoJson);
+    _resultDampening = (blastAreaM / _expandedBlastGeoJsonAreaM) * 2;
+  }
+
+  // Determine the map type to use
+  let populationMapType = "pop4";
+  let popGeoRaster = pop4MapGeoRaster;
+
+  if (blastAreaKm > 1500) {
+    populationMapType = "pop3";
+    popGeoRaster = pop3MapGeoRaster;
+  }
+
+  if (blastAreaKm > 15000) {
+    populationMapType = "pop2";
+    popGeoRaster = pop2MapGeoRaster;
+  }
+  if (blastAreaKm > 30000) {
+    populationMapType = "pop1";
+    popGeoRaster = pop1MapGeoRaster;
+  }
+
+  try {
+    // Calculate the population
+
+    const populationResult = await geoblaze.sum(
+      pop4MapGeoRaster,
+      _expandedBlastGeoJson || blastGeoJson
+    );
+
+    res.status(200).json({
+      population: (
+        parseInt(populationResult) * _resultDampening
+      ).toLocaleString("en-US"),
+      mapType: populationMapType,
+      blastAreaKm: blastAreaKm.toLocaleString("en-US"),
+      resultDampening: _resultDampening,
+    });
+  } catch {
+    res.status(500).json({
+      error: "Something went wrong",
+      mapType: populationMapType,
+      blastAreaKm: blastAreaKm.toLocaleString("en-US"),
+      resultDampening: _resultDampening,
+      hasExpandedBlastGeoJson: _expandedBlastGeoJson ? true : false,
+    });
+  }
 });
 
-app.listen(Number(port), "0.0.0.0", () => {
+app.listen(Number(port), "0.0.0.0", async () => {
+  pop4MapGeoRaster = await geoblaze.parse(
+    `https://map-gules.vercel.app/maps/pop4.tif`
+  );
+  console.log("Loaded Pop 4 Map");
+
+  pop3MapGeoRaster = await geoblaze.parse(
+    `https://map-gules.vercel.app/maps/pop3.tif`
+  );
+  console.log("Loaded Pop 3 Map");
+
+  pop2MapGeoRaster = await geoblaze.parse(
+    `https://map-gules.vercel.app/maps/pop2.tif`
+  );
+  console.log("Loaded Pop 2 Map");
+
+  pop1MapGeoRaster = await geoblaze.parse(
+    `https://map-gules.vercel.app/maps/pop1.tif`
+  );
+  console.log("Loaded Pop 1 Map");
+
   console.log(`Example app listening at http://localhost:${port}`);
 });
