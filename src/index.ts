@@ -133,54 +133,56 @@ app.post("/pop", async (req, res) => {
   // Loop through the blast areas and calculate the population
   let _populationResults: any = [];
 
-  try {
-    for (let i = 0; i < _blastAreas.length; i++) {
-      const _blastArea: any = _blastAreas[i];
+  for (let i = 0; i < _blastAreas.length; i++) {
+    const _blastArea: any = _blastAreas[i];
 
-      // @ts-ignore
-      let _blastAreaKm = area(_blastArea) / 1000000;
+    // @ts-ignore
+    let _blastAreaKm = area(_blastArea) / 1000000;
 
-      // Determine the map type to use
-      let populationMapType = "pop4";
-      let popGeoRaster = pop4MapGeoRaster;
-      if (_blastAreaKm > 1500) {
-        populationMapType = "pop3";
-        popGeoRaster = pop3MapGeoRaster;
-      }
-      if (_blastAreaKm > 15000) {
-        populationMapType = "pop2";
-        popGeoRaster = pop2MapGeoRaster;
-      }
-      if (_blastAreaKm > 30000) {
-        populationMapType = "pop1";
-        popGeoRaster = pop1MapGeoRaster;
-      }
+    // Determine the map type to use
+    let populationMapType = "pop4";
+    let popGeoRaster = pop4MapGeoRaster;
 
-      const populationResult = await geoblaze.sum(popGeoRaster, _blastArea);
-
-      _populationResults.push({
-        population: parseInt(populationResult),
-        radiusKm: radii[i],
-        areaKm: Math.round(_blastAreaKm),
-        mapType: populationMapType,
-      });
+    if (_blastAreaKm > 1500) {
+      populationMapType = "pop3";
+      popGeoRaster = pop3MapGeoRaster;
+    }
+    if (_blastAreaKm > 15000) {
+      populationMapType = "pop2";
+      popGeoRaster = pop2MapGeoRaster;
+    }
+    if (_blastAreaKm > 30000) {
+      populationMapType = "pop1";
+      popGeoRaster = pop1MapGeoRaster;
     }
 
-    for (let i = 0; i < _populationResults.length; i++) {
-      const _populationResult = _populationResults[i];
-      const _previousPopulationResult = _populationResults[i - 1];
-
-      if (_previousPopulationResult) {
-        _populationResult.populationOriginal = _populationResult.population;
-        _populationResult.population =
-          _populationResult.population - _previousPopulationResult.population;
-
-        _populationResult.areaKm =
-          _populationResult.areaKm - _previousPopulationResult.areaKm;
-      }
+    let populationResult;
+    try {
+      populationResult = await geoblaze.sum(popGeoRaster, _blastArea);
+    } catch {
+      populationResult = 0;
     }
-  } catch (e) {
-    console.log(e);
+
+    _populationResults.push({
+      population: parseInt(populationResult),
+      radiusKm: radii[i],
+      areaKm: Math.round(_blastAreaKm),
+      mapType: populationMapType,
+    });
+  }
+
+  for (let i = 0; i < _populationResults.length; i++) {
+    const _populationResult = _populationResults[i];
+    const _previousPopulationResult = _populationResults[i - 1];
+
+    if (_previousPopulationResult) {
+      _populationResult.populationOriginal = _populationResult.population;
+      _populationResult.population =
+        _populationResult.population - _previousPopulationResult.population;
+
+      _populationResult.areaKm =
+        _populationResult.areaKm - _previousPopulationResult.areaKm;
+    }
   }
 
   res.status(200).json({
