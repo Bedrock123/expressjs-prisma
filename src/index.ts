@@ -1,7 +1,9 @@
-import { PrismaClient } from "@prisma/client";
 import express from "express";
+// @ts-ignore
+import geoblaze from "geoblaze";
 
-const prisma = new PrismaClient();
+import area from "@turf/area";
+import centroid from "@turf/centroid";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,65 +12,23 @@ app.use(express.json());
 app.use(express.raw({ type: "application/vnd.custom-type" }));
 app.use(express.text({ type: "text/html" }));
 
-app.get("/todos", async (req, res) => {
-  const todos = await prisma.todo.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-
-  res.json(todos);
-});
-
-app.post("/todos", async (req, res) => {
-  const todo = await prisma.todo.create({
-    data: {
-      completed: false,
-      createdAt: new Date(),
-      text: req.body.text ?? "Empty todo",
-    },
-  });
-
-  return res.json(todo);
-});
-
-app.get("/todos/:id", async (req, res) => {
-  const id = req.params.id;
-  const todo = await prisma.todo.findUnique({
-    where: { id },
-  });
-
-  return res.json(todo);
-});
-
-app.put("/todos/:id", async (req, res) => {
-  const id = req.params.id;
-  const todo = await prisma.todo.update({
-    where: { id },
-    data: req.body,
-  });
-
-  return res.json(todo);
-});
-
-app.delete("/todos/:id", async (req, res) => {
-  const id = req.params.id;
-  await prisma.todo.delete({
-    where: { id },
-  });
-
-  return res.send({ status: "ok" });
-});
+let population4GeoRaster: any;
 
 app.get("/", async (req, res) => {
-  res.send(
-    `
-  <h1>Todo REsdfST API</h1>
-  <h2>Available Routes</h2>
-  <pre>
-    GET, POST /todos
-    GET, PUT, DELETE /todos/:id
-  </pre>
-  `.trim()
-  );
+  const start = Date.now();
+  if (!population4GeoRaster) {
+    console.log("first Load");
+    population4GeoRaster = await geoblaze.parse(
+      `https://map-gules.vercel.app/maps/pop3.tif`
+    );
+  } else {
+    console.log("Population GeoRaster is already loaded");
+  }
+
+  const populationResult = await geoblaze.sum(population4GeoRaster);
+  const end = Date.now();
+  console.log(`Execution time: ${end - start} ms`);
+  res.send(populationResult);
 });
 
 app.listen(Number(port), "0.0.0.0", () => {
