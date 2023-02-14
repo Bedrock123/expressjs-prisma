@@ -57,7 +57,7 @@ var createGeoJSONCircle = function (center, outerRadiusInKm, points) {
 
 app.post("/", async (req, res) => {
   const body = req.body;
-
+  const startPrepTime = performance.now();
   let blastGeoJson = body.data;
   const blastAreaM = area(blastGeoJson);
   const blastAreaKm = blastAreaM / 1000000;
@@ -97,13 +97,22 @@ app.post("/", async (req, res) => {
     populationMapType = "pop1";
     popGeoRaster = pop1MapGeoRaster;
   }
+  const endPrepTime = performance.now();
 
+  console.log(
+    `Call to doSomething took ${endPrepTime - startPrepTime} milliseconds`
+  );
   try {
     // Calculate the population
-
+    const startReadTime = performance.now();
     const populationResult = await geoblaze.sum(
       pop4MapGeoRaster,
       _expandedBlastGeoJson || blastGeoJson
+    );
+    const endReadTime = performance.now();
+
+    console.log(
+      `Call to doSomething took ${endReadTime - startPrepTime} milliseconds`
     );
 
     res.status(200).json({
