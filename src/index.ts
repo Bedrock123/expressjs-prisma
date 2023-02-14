@@ -77,6 +77,7 @@ app.post("/", async (req, res) => {
     );
     // @ts-ignore
     const _expandedBlastGeoJsonAreaM = area(_expandedBlastGeoJson);
+    console.log(_expandedBlastGeoJsonAreaM / 1000000);
     _resultDampening = (blastAreaM / _expandedBlastGeoJsonAreaM) * 2;
   }
 
@@ -109,19 +110,21 @@ app.post("/", async (req, res) => {
       pop4MapGeoRaster,
       _expandedBlastGeoJson || blastGeoJson
     );
+
     const endReadTime = performance.now();
 
     console.log(
-      `Call to doSomething took ${endReadTime - startPrepTime} milliseconds`
+      `Call to doSomething took ${endReadTime - startReadTime} milliseconds`
     );
 
     res.status(200).json({
-      population: (
-        parseInt(populationResult) * _resultDampening
-      ).toLocaleString("en-US"),
+      population: (parseInt(populationResult) * _resultDampening)
+        .toLocaleString("en-US")
+        .split(".")[0],
       mapType: populationMapType,
       blastAreaKm: blastAreaKm.toLocaleString("en-US"),
       resultDampening: _resultDampening,
+      hasExpandedBlastGeoJson: _expandedBlastGeoJson ? true : false,
     });
   } catch {
     res.status(500).json({
@@ -129,7 +132,6 @@ app.post("/", async (req, res) => {
       mapType: populationMapType,
       blastAreaKm: blastAreaKm.toLocaleString("en-US"),
       resultDampening: _resultDampening,
-      hasExpandedBlastGeoJson: _expandedBlastGeoJson ? true : false,
     });
   }
 });
