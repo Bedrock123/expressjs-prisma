@@ -4,6 +4,8 @@ import geoblaze from "geoblaze";
 import area from "@turf/area";
 import centroid from "@turf/centroid";
 
+import { createGeoJSONCircle, createGeoJSONDonut } from "./helpers";
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -15,45 +17,6 @@ let pop4MapGeoRaster: any;
 let pop3MapGeoRaster: any;
 let pop2MapGeoRaster: any;
 let pop1MapGeoRaster: any;
-
-// @ts-ignore
-var createGeoJSONCircle = function (center, outerRadiusInKm, points) {
-  if (!points) points = 64;
-
-  var coords = {
-    latitude: center[1],
-    longitude: center[0],
-  };
-
-  var km = outerRadiusInKm;
-
-  var ret = [];
-  var distanceX = km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180));
-  var distanceY = km / 110.574;
-
-  var theta, x, y;
-  for (var i = 0; i < points; i++) {
-    theta = (i / points) * (2 * Math.PI);
-    x = distanceX * Math.cos(theta);
-    y = distanceY * Math.sin(theta);
-
-    ret.push([coords.longitude + x, coords.latitude + y]);
-  }
-  ret.push(ret[0]);
-
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [ret],
-        },
-      },
-    ],
-  };
-};
 
 app.post("/", async (req, res) => {
   const body = req.body;
@@ -70,11 +33,11 @@ app.post("/", async (req, res) => {
     const blastCenterGeoJson = centroid(blastGeoJson);
     const blastCenterCoordinates = blastCenterGeoJson.geometry.coordinates;
 
-    _expandedBlastGeoJson = createGeoJSONCircle(
-      blastCenterCoordinates,
-      4.9,
-      64 * 4
-    );
+    _expandedBlastGeoJson = createGeoJSONCircle({
+      center: blastCenterCoordinates,
+      outerRadiusInKm: 4.9,
+      points: 64 * 4,
+    });
     // @ts-ignore
     const _expandedBlastGeoJsonAreaM = area(_expandedBlastGeoJson);
     console.log(_expandedBlastGeoJsonAreaM / 1000000);
@@ -130,6 +93,100 @@ app.post("/", async (req, res) => {
       resultDampening: _resultDampening,
     });
   }
+});
+
+app.post("/pop", async (req, res) => {
+  console.log("-----------------------------------");
+  const body = req.body;
+  const defaultPoints = 64;
+
+  const {
+    center,
+    radii,
+  }: {
+    center: number[];
+    radii: number[];
+  } = body;
+
+  // Check for missing data
+  if (!center || !radii) {
+    res.status(400).json({
+      error: "Missing center or radii",
+    });
+    res.end();
+    return;
+  }
+
+  // Create the blast areas
+  let _blastAreas = [];
+  for (let i = 0; i < radii.length; i++) {
+    const radius = radii[i];
+
+    const _blastGeoJson = createGeoJSONCircle({
+      center: center,
+      outerRadiusInKm: radius,
+      points: defaultPoints,
+    });
+    _blastAreas.push(_blastGeoJson);
+  }
+
+  // @ts-ignore
+  let _largestBlastAreaKm = area(_blastAreas[_blastAreas.length - 1]) / 1000000;
+
+  // Determine the map type to use
+  let populationMapType = "pop4";
+  let popGeoRaster = pop4MapGeoRaster;
+  if (_largestBlastAreaKm > 1500) {
+    populationMapType = "pop3";
+    popGeoRaster = pop3MapGeoRaster;
+  }
+  if (_largestBlastAreaKm > 15000) {
+    populationMapType = "pop2";
+    popGeoRaster = pop2MapGeoRaster;
+  }
+  if (_largestBlastAreaKm > 30000) {
+    populationMapType = "pop1";
+    popGeoRaster = pop1MapGeoRaster;
+  }
+
+  // Loop through the blast areas and calculate the population
+  let _populationResults: any = [];
+
+  try {
+    for (let i = 0; i < _blastAreas.length; i++) {
+      const _blastArea: any = _blastAreas[i];
+      const populationResult = await geoblaze.sum(popGeoRaster, _blastArea);
+
+      _populationResults.push({
+        population: parseInt(populationResult),
+        radiusKm: radii[i],
+        areaKm: Math.round(area(_blastArea) / 1000000),
+      });
+    }
+
+    for (let i = 0; i < _populationResults.length; i++) {
+      const _populationResult = _populationResults[i];
+      const _previousPopulationResult = _populationResults[i - 1];
+
+      if (_previousPopulationResult) {
+        _populationResult.populationOriginal = _populationResult.population;
+        _populationResult.population =
+          _populationResult.population - _previousPopulationResult.population;
+
+        _populationResult.areaKm =
+          _populationResult.areaKm - _previousPopulationResult.areaKm;
+      }
+    }
+  } catch (e) {
+    console.log(e);
+  }
+
+  res.status(200).json({
+    meta: {
+      mapType: populationMapType,
+    },
+    population: _populationResults,
+  });
 });
 
 app.listen(Number(port), "0.0.0.0", async () => {
