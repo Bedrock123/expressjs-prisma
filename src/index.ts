@@ -2,9 +2,8 @@ import express from "express";
 // @ts-ignore
 import geoblaze from "geoblaze";
 import area from "@turf/area";
-import centroid from "@turf/centroid";
-
-import { createGeoJSONCircle, createGeoJSONDonut } from "./helpers";
+import axios from "axios";
+import { createGeoJSONCircle } from "./helpers";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,83 +16,6 @@ let pop4MapGeoRaster: any;
 let pop3MapGeoRaster: any;
 let pop2MapGeoRaster: any;
 let pop1MapGeoRaster: any;
-
-app.post("/", async (req, res) => {
-  const body = req.body;
-  const startPrepTime = performance.now();
-  let blastGeoJson = body.data;
-  const blastAreaM = area(blastGeoJson);
-  const blastAreaKm = blastAreaM / 1000000;
-
-  let _resultDampening = 1;
-  let _expandedBlastGeoJson;
-
-  // If the blast area is too small, expand it and then dampen the result
-  if (blastAreaKm <= 0.5) {
-    const blastCenterGeoJson = centroid(blastGeoJson);
-    const blastCenterCoordinates = blastCenterGeoJson.geometry.coordinates;
-
-    _expandedBlastGeoJson = createGeoJSONCircle({
-      center: blastCenterCoordinates,
-      outerRadiusInKm: 4.9,
-      points: 64 * 4,
-    });
-    // @ts-ignore
-    const _expandedBlastGeoJsonAreaM = area(_expandedBlastGeoJson);
-    console.log(_expandedBlastGeoJsonAreaM / 1000000);
-    _resultDampening = (blastAreaM / _expandedBlastGeoJsonAreaM) * 2;
-  }
-
-  // Determine the map type to use
-  let populationMapType = "pop4";
-  let popGeoRaster = pop4MapGeoRaster;
-
-  if (blastAreaKm > 1500) {
-    populationMapType = "pop3";
-    popGeoRaster = pop3MapGeoRaster;
-  }
-
-  if (blastAreaKm > 15000) {
-    populationMapType = "pop2";
-    popGeoRaster = pop2MapGeoRaster;
-  }
-  if (blastAreaKm > 30000) {
-    populationMapType = "pop1";
-    popGeoRaster = pop1MapGeoRaster;
-  }
-  const endPrepTime = performance.now();
-
-  console.log(`Call to sdf took ${endPrepTime - startPrepTime} milliseconds`);
-  try {
-    // Calculate the population
-    const startReadTime = performance.now();
-    const populationResult = await geoblaze.sum(
-      pop4MapGeoRaster,
-      _expandedBlastGeoJson || blastGeoJson
-    );
-
-    const endReadTime = performance.now();
-
-    console.log(`Read File Time: ${endReadTime - startReadTime} milliseconds`);
-
-    res.status(200).json({
-      population: (parseInt(populationResult) * _resultDampening)
-        .toLocaleString("en-US")
-        .split(".")[0],
-      mapType: populationMapType,
-      blastAreaKm: blastAreaKm.toLocaleString("en-US"),
-      resultDampening: _resultDampening,
-      hasExpandedBlastGeoJson: _expandedBlastGeoJson ? true : false,
-    });
-  } catch {
-    res.status(500).json({
-      error: "Something went wrong",
-      mapType: populationMapType,
-      blastAreaKm: blastAreaKm.toLocaleString("en-US"),
-      resultDampening: _resultDampening,
-    });
-  }
-});
 
 app.post("/pop", async (req, res) => {
   console.log("-----------------------------------");
@@ -187,6 +109,56 @@ app.post("/pop", async (req, res) => {
 
   res.status(200).json({
     population: _populationResults,
+  });
+});
+
+app.post("/geo", async (req, res) => {
+  console.log("----------------  ADDRESS FIND --------------------");
+  const body = req.body;
+
+  const {
+    coordinates,
+    address,
+  }: {
+    coordinates?: number[];
+    address?: string;
+  } = body;
+
+  // Check for missing data
+  if (!coordinates && !address) {
+    res.status(400).json({
+      error: "Missing coordinates or address",
+    });
+    res.end();
+    return;
+  }
+  let addressSearchData;
+  if (coordinates) {
+    addressSearchData = await axios({
+      method: "get",
+      url: `https://api.mapbox.com/geocoding/v5/mapbox.places/${coordinates[0]},${coordinates[1]}.json?limit=1&access_token=pk.eyJ1IjoiemFjaGFyeWJlZHJvc2lhbiIsImEiOiJja2V2dTh4NWwwMHloMzBqcmdyNmppZjRqIn0.pssVFWlGhGl4sqZ--d2hLA`,
+    })
+      .then(({ data }) => {
+        return data;
+      })
+      .catch((error) => {
+        return null;
+      });
+  } else {
+    addressSearchData = await axios({
+      method: "get",
+      url: `https://api.mapbox.com/geocoding/v5/mapbox.places/${address}.json?limit=9&autocomplete=true&fuzzyMatch=true&access_token=pk.eyJ1IjoiemFjaGFyeWJlZHJvc2lhbiIsImEiOiJja2V2dTh4NWwwMHloMzBqcmdyNmppZjRqIn0.pssVFWlGhGl4sqZ--d2hLA`,
+    })
+      .then(({ data }) => {
+        return data;
+      })
+      .catch((error) => {
+        return null;
+      });
+  }
+
+  res.status(200).json({
+    addressSearchData,
   });
 });
 
