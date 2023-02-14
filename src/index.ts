@@ -135,22 +135,22 @@ app.post("/", async (req, res) => {
 });
 
 app.listen(Number(port), "0.0.0.0", async () => {
-  pop4MapGeoRaster = await geoblaze.parse(
+  pop4MapGeoRaster = await geoblaze.load(
     `https://map-gules.vercel.app/maps/pop4.tif`
   );
   console.log("Loaded Pop 4 Map");
 
-  pop3MapGeoRaster = await geoblaze.parse(
+  pop3MapGeoRaster = await geoblaze.load(
     `https://map-gules.vercel.app/maps/pop3.tif`
   );
   console.log("Loaded Pop 3 Map");
 
-  pop2MapGeoRaster = await geoblaze.parse(
+  pop2MapGeoRaster = await geoblaze.load(
     `https://map-gules.vercel.app/maps/pop2.tif`
   );
   console.log("Loaded Pop 2 Map");
 
-  pop1MapGeoRaster = await geoblaze.parse(
+  pop1MapGeoRaster = await geoblaze.load(
     `https://map-gules.vercel.app/maps/pop1.tif`
   );
   console.log("Loaded Pop 1 Map");
