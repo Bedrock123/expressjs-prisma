@@ -12,6 +12,7 @@ app.use(express.json());
 app.use(express.raw({ type: "application/vnd.custom-type" }));
 app.use(express.text({ type: "text/html" }));
 
+let pop5MapGeoRaster: any;
 let pop4MapGeoRaster: any;
 let pop3MapGeoRaster: any;
 let pop2MapGeoRaster: any;
@@ -62,9 +63,13 @@ app.post("/pop", async (req, res) => {
     let _blastAreaKm = area(_blastArea) / 1000000;
 
     // Determine the map type to use
-    let populationMapType = "pop4";
-    let popGeoRaster = pop4MapGeoRaster;
+    let populationMapType = "pop5";
+    let popGeoRaster = pop5MapGeoRaster;
 
+    if (_blastAreaKm > 550) {
+      populationMapType = "pop4";
+      popGeoRaster = pop4MapGeoRaster;
+    }
     if (_blastAreaKm > 1500) {
       populationMapType = "pop3";
       popGeoRaster = pop3MapGeoRaster;
@@ -163,6 +168,11 @@ app.post("/geo", async (req, res) => {
 });
 
 app.listen(Number(port), "0.0.0.0", async () => {
+  pop5MapGeoRaster = await geoblaze.parse(
+    `https://cleancult-production-static.s3.amazonaws.com/gpw_v4_population_count_rev11_2000_30_sec.tif`
+  );
+  console.log("Loaded Pop 5 Map");
+
   pop4MapGeoRaster = await geoblaze.load(
     `https://map-gules.vercel.app/maps/pop4.tif`
   );
